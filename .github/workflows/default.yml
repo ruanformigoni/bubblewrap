@@ -1,0 +1,59 @@
+# This is a basic workflow to help you get started with Actions
+
+name: default
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Compile and extract the artifact from docker container
+      run: |
+        mkdir -p dist
+        docker build -t alpine:bwrap .
+        docker run --rm -v $(pwd):/workdir alpine:bwrap cp /bubblewrap/build/bwrap /workdir/dist/bwrap
+
+    - name: Set permissions for dist directory
+      run: |
+        sudo chown -R "$(id -u)":"$(id -g)" dist/
+        sudo chmod -R 766 dist/
+
+    - name: Upload artifact to release
+      uses: actions/upload-artifact@v1.0.0
+      with:
+        name: bwrap
+        path: 'dist'
+
+    - name: Compute Short SHA
+      id: ssha
+      run: |
+        echo "ssha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+    outputs:
+      ssha: ${{ steps.ssha.outputs.ssha }}
+
+
+  release:
+      permissions: write-all
+      needs: [build]
+      runs-on: ubuntu-latest
+
+      steps:
+        - uses: actions/download-artifact@v1
+          with:
+            name: bwrap
+
+        - name: release
+          uses: marvinpinto/action-automatic-releases@latest
+          with:
+            title: Continuous ${{ needs.build.outputs.ssha }}
+            automatic_release_tag: ${{ needs.build.outputs.ssha }}
+            prerelease: false
+            draft: false
+            files: |
+              bwrap
+            repo_token: ${{ secrets.GITHUB_TOKEN }}
