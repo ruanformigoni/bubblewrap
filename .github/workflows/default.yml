@@ -11,11 +11,17 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2
 
-    - name: Compile and extract the artifact from docker container
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v2
+
+    - name: Compile and extract artifacts from docker container
       run: |
         mkdir -p dist
-        docker build -t alpine:bwrap .
-        docker run --rm -v $(pwd):/workdir alpine:bwrap cp /bubblewrap/build/bwrap /workdir/dist/bwrap
+
+        for arch in x86_64 aarch64; do
+          docker build --platform "${arch}" -t alpine:bwrap .
+          docker run --rm --platform "${arch}" -v $(pwd):/workdir alpine:bwrap cp /bubblewrap/build/bwrap "/workdir/dist/bwrap-${arch}"
+        done
 
     - name: Set permissions for dist directory
       run: |
