@@ -28,7 +28,7 @@ jobs:
         sudo chown -R "$(id -u)":"$(id -g)" dist/
         sudo chmod -R 766 dist/
 
-    - name: Upload artifact to release
+    - name: Upload artifacts to release
       uses: actions/upload-artifact@v1.0.0
       with:
         name: bwrap
