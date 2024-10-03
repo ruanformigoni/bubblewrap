@@ -61,5 +61,5 @@ jobs:
             prerelease: false
             draft: false
             files: |
-              bwrap
+              *bwrap*
             repo_token: ${{ secrets.GITHUB_TOKEN }}
