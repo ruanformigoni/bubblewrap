@@ -20,4 +20,4 @@ RUN cc -o bwrap bwrap.p/bubblewrap.c.o bwrap.p/bind-mount.c.o bwrap.p/network.c.
 RUN strip -s -R .comment -R .gnu.version --strip-unneeded bwrap
 
 # Compress
-RUN upx --ultra-brute --no-lzma bwrap
+# RUN upx --ultra-brute --no-lzma bwrap
