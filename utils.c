@@ -93,7 +93,7 @@ die_with_mount_error (const char *format, ...)
   bwrap_logv (LOG_ERR, format, args, mount_strerror (errsv));
   va_end (args);
 
-  exit (1);
+  exit (errno);
 }
 
 void
