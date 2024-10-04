@@ -66,7 +66,7 @@ die_with_error (const char *format, ...)
 
   fprintf (stderr, ": %s\n", strerror (errsv));
 
-  exit (1);
+  exit (errno);
 }
 
 void
