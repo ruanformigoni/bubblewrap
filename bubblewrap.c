@@ -24,6 +24,7 @@
 #include <pwd.h>
 #include <grp.h>
 #include <ctype.h>
+#include <time.h>
 #include <sys/mount.h>
 #include <sys/socket.h>
 #include <sys/wait.h>
@@ -1154,10 +1155,21 @@ privileged_op (int         privileged_op_socket,
       break;
 
     case PRIV_SEP_OP_OVERLAY_MOUNT:
-      if (mount ("overlay", arg2, "overlay", MS_MGC_VAL, arg1) != 0)
+      while (mount ("overlay", arg2, "overlay", MS_MGC_VAL, arg1) != 0)
         {
           /* The standard message for ELOOP, "Too many levels of symbolic
            * links", is not helpful here. */
+          if (errno == EBUSY)
+          {
+            struct timespec req, rem;
+            req.tv_sec = 0;
+            req.tv_nsec = 50 * 1000000L;
+            if (nanosleep(&req, &rem) == -1)
+            {
+              die("Failed nanosleep");
+            }
+            continue;
+          }
           if (errno == ELOOP)
             die ("Can't make overlay mount on %s with options %s: "
                 "Overlay directories may not overlap",
