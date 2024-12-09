@@ -1,5 +1,10 @@
 FROM alpine:latest
 
+# Update repositories
+RUN echo https://dl-cdn.alpinelinux.org/alpine/v3.20/main/ > /etc/apk/repositories
+RUN echo https://dl-cdn.alpinelinux.org/alpine/v3.20/community/ >> /etc/apk/repositories
+
+RUN apk update
 RUN apk add --no-cache git gcc make musl-dev autoconf automake libtool ninja \
   linux-headers bash meson cmake pkgconfig libcap-static libcap-dev \
   libselinux-dev libxslt upx
