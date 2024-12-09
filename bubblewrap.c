@@ -36,6 +36,7 @@
 #include <linux/sched.h>
 #include <linux/seccomp.h>
 #include <linux/filter.h>
+#include <sys/syscall.h>
 
 #include "utils.h"
 #include "network.h"
@@ -83,6 +84,7 @@ static uid_t opt_sandbox_uid = -1;
 static gid_t opt_sandbox_gid = -1;
 static int opt_sync_fd = -1;
 static int opt_block_fd = -1;
+static int opt_error_fd = -1;
 static int opt_userns_block_fd = -1;
 static int opt_info_fd = -1;
 static int opt_json_status_fd = -1;
@@ -1157,8 +1159,7 @@ privileged_op (int         privileged_op_socket,
     case PRIV_SEP_OP_OVERLAY_MOUNT:
       while (mount ("overlay", arg2, "overlay", MS_MGC_VAL, arg1) != 0)
         {
-          /* The standard message for ELOOP, "Too many levels of symbolic
-           * links", is not helpful here. */
+          /* Wait for busy upper directory */
           if (errno == EBUSY)
           {
             struct timespec req, rem;
@@ -1170,12 +1171,29 @@ privileged_op (int         privileged_op_socket,
             }
             continue;
           }
-          if (errno == ELOOP)
-            die ("Can't make overlay mount on %s with options %s: "
-                "Overlay directories may not overlap",
-                arg2, arg1);
-          die_with_mount_error ("Can't make overlay mount on %s with options %s",
-                                arg2, arg1);
+          /* Describe error:
+            Write the system call number and the error */
+          int syscall_nr = SYS_mount;
+          int errno_nr = errno;
+          if (opt_error_fd != -1)
+          {
+            write(opt_error_fd, &syscall_nr, sizeof(syscall_nr));
+            write(opt_error_fd, &errno_nr, sizeof(errno_nr));
+            exit(1);
+          } // if
+          else
+          {
+            /* The standard message for ELOOP, "Too many levels of symbolic
+             * links", is not helpful here. */
+            if (errno == ELOOP)
+            {
+              die ("Can't make overlay mount on %s with options %s: "
+                  "Overlay directories may not overlap",
+                  arg2, arg1);
+            }
+            die_with_mount_error ("Can't make overlay mount on %s with options %s",
+                                  arg2, arg1);
+          } // else
         }
       break;
 
@@ -2331,6 +2349,26 @@ parse_args_recurse (int          *argcp,
             die ("Invalid fd: %s", argv[1]);
 
           opt_sync_fd = the_fd;
+
+          argv += 1;
+          argc -= 1;
+        }
+      else if (strcmp (arg, "--error-fd") == 0)
+        {
+          int the_fd;
+          char *endptr;
+
+          if (argc < 2)
+            die ("--error-fd takes an argument");
+
+          if (opt_error_fd != -1)
+            warn_only_last_option ("--error-fd");
+
+          the_fd = strtol (argv[1], &endptr, 10);
+          if (argv[1][0] == 0 || endptr[0] != 0 || the_fd < 0)
+            die ("Invalid fd: %s", argv[1]);
+
+          opt_error_fd = the_fd;
 
           argv += 1;
           argc -= 1;
